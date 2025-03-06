@@ -104,15 +104,14 @@ public class InputManager : MonoBehaviour
             if (isFocused)
             {
                 ignoreNextMouseMovement = true;
+                Cursor.visible = false;
+                Cursor.lockState = CursorLockMode.Locked;
             }
-
-#if UNITY_EDITOR
-            Cursor.visible = !isFocused;
-            //Debug.Log($"Editor mode: SetFocus called. isFocused: {isFocused}, Cursor visible: {Cursor.visible}");
-#else
-            Cursor.visible = !isFocused;
-            Cursor.lockState = isFocused ? CursorLockMode.Locked : CursorLockMode.None;
-#endif
+            else
+            {
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+            }
 
             OnFocusChanged?.Invoke(isFocused);
         }

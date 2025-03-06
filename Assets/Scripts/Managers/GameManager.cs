@@ -8,6 +8,7 @@ using UnityEngine;
 
 public enum LifeRule3D
 {
+    Auto,
     Life5766,
     Life4555,
     Life4644_Old
@@ -23,6 +24,9 @@ public class GameManager : MonoBehaviour
 
     public delegate void PauseStateChangedHandler(bool _isPaused);
     public static event PauseStateChangedHandler OnPauseStateChanged;
+
+    public delegate void GridChangedHandler(Grid newGrid, int newSize);
+    public static event GridChangedHandler OnGridChanged;
     #endregion
 
     #region Fields and Properties
@@ -81,6 +85,9 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        //QualitySettings.vSyncCount = 0;
+        //Application.targetFrameRate = -1;
     }
 
     private void Start()
@@ -122,6 +129,8 @@ public class GameManager : MonoBehaviour
 
         ResetGrid();
         StatManager.Instance.UpdateTotalCells();
+
+        OnGridChanged?.Invoke(Grid, gridSize);
     }
 
     public void CreateCell(int3 _position)
@@ -160,6 +169,8 @@ public class GameManager : MonoBehaviour
 
         StatManager.Instance.ResetStats();
         StatManager.Instance.SetPaused(true);
+
+        OnGridChanged?.Invoke(Grid, gridSize);
         Debug.Log("Grid and Stats Reset");
     }
 
@@ -228,6 +239,11 @@ public class GameManager : MonoBehaviour
 
     private void AssignRuleFunction()
     {
+        if (selectedRule == LifeRule3D.Auto)
+        {
+            selectedRule = GetBestRuleForGridSize(gridSize);
+        }
+
         determineNewState = selectedRule switch
         {
             LifeRule3D.Life5766 => DetermineNewState_5766,
@@ -237,6 +253,13 @@ public class GameManager : MonoBehaviour
         };
 
         Debug.Log($"Selected rule: {selectedRule}");
+    }
+
+    private LifeRule3D GetBestRuleForGridSize(int size)
+    {
+        if (size <= 12) return LifeRule3D.Life4644_Old;  // Long survival in small grids
+        if (size <= 24) return LifeRule3D.Life4555;      // Good balance between duration and complexity
+        return LifeRule3D.Life5766;                      // Prevents too rapid expansion on large grids
     }
 
     private void UpdateGrid()

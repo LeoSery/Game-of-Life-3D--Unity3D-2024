@@ -7,8 +7,14 @@ using Unity.Mathematics;
 public class CellInteractionController : MonoBehaviour
 {
     #region Public Fields
+    [Header("Settings")]
     public float interactionDistance = 10f;
     public Color highlightColor = Color.yellow;
+
+    [Header("Debug")]
+    public bool showDebugRay = false;
+    public Color debugRayColor = Color.magenta;
+    public float debugRayDuration = 0.05f;
     #endregion
 
     #region Private Fields
@@ -21,7 +27,7 @@ public class CellInteractionController : MonoBehaviour
     private int lastGridSize = -1;
     private Vector3 cachedRayOrigin = new(0.5f, 0.5f, 0);
     private float lastUpdateTime = 0f;
-    private const float UPDATE_THROTTLE = 0.05f;
+    private const float UPDATE_THROTTLE = 0.01f;
     #endregion
 
     #region Unity Lifecycle Methods
@@ -39,11 +45,14 @@ public class CellInteractionController : MonoBehaviour
         StartCoroutine(WaitForGameManager());
 
         visualGrid = GameManager.Instance.visualGrid;
+
+        GameManager.OnGridChanged += OnGridChanged;
     }
 
     private void OnDisable()
     {
         UnsubscribeToEvents();
+        GameManager.OnGridChanged += OnGridChanged;
     }
     #endregion
 
@@ -81,9 +90,15 @@ public class CellInteractionController : MonoBehaviour
             return;
         }
 
-        UpdateGridOffset();
+        UpdateGridOffset(true);
 
-        Ray ray = mainCamera.ViewportPointToRay(cachedRayOrigin);
+        Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+
+        if (showDebugRay)
+        {
+            Debug.DrawRay(ray.origin, ray.direction * 100f, debugRayColor, debugRayDuration);
+        }
+
         Vector3Int? targetCell = FindTargetCell(ray);
 
         if (targetCell.HasValue)
@@ -124,24 +139,61 @@ public class CellInteractionController : MonoBehaviour
         {
             Debug.LogError("InputManager instance is null. Make sure it's initialized before CellInteractionController.");
         }
+
+        Debug.Log("CellInteractionController initialized with grid size: " + grid.GridSize);
     }
 
-    private void UpdateGridOffset()
+    private void UpdateGridOffset(bool forceUpdate = false)
     {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("UpdateGridOffset: GameManager.Instance is null");
+            return;
+        }
+
         int currentGridSize = GameManager.Instance.gridSize;
 
-        if (currentGridSize != lastGridSize)
+        if (forceUpdate || currentGridSize != lastGridSize)
         {
             lastGridSize = currentGridSize;
             float cellSize = GameManager.Instance.CellSize;
-            gridOffset.Set(
+
+            // Calcul plus précis de l'offset pour centrer la grille
+            gridOffset = new Vector3(
                 currentGridSize / 2f * cellSize,
                 currentGridSize / 2f * cellSize,
                 currentGridSize / 2f * cellSize
             );
 
+            if (showDebugRay)
+            {
+                Debug.Log($"Grid offset updated: {gridOffset}");
+            }
+
             lastHighlightedCell = null;
         }
+    }
+
+    private void OnGridChanged(Grid newGrid, int newSize)
+    {
+        if (newGrid == null)
+        {
+            Debug.LogWarning("OnGridChanged called with null grid");
+            return;
+        }
+
+        grid = newGrid;
+
+        lastGridSize = -1;
+        UpdateGridOffset();
+
+        if (lastHighlightedCell.HasValue)
+        {
+            visualGrid.UnhighlightCell();
+            lastHighlightedCell = null;
+        }
+
+        Debug.Log($"CellInteractionController: Grid reference updated to new size: {newSize}");
     }
 
     private void SubscribeToEvents()
@@ -199,6 +251,20 @@ public class CellInteractionController : MonoBehaviour
 
         Vector3 hitPoint = _ray.origin + _ray.direction * t;
 
+        if (showDebugRay)
+        {
+            Debug.DrawLine(_ray.origin, hitPoint, Color.yellow, debugRayDuration);
+
+            float markerSize = 0.1f;
+            Vector3 up = new Vector3(0, markerSize, 0);
+            Vector3 right = new Vector3(markerSize, 0, 0);
+            Vector3 forward = new Vector3(0, 0, markerSize);
+
+            Debug.DrawLine(hitPoint - up, hitPoint + up, Color.red, debugRayDuration);
+            Debug.DrawLine(hitPoint - right, hitPoint + right, Color.red, debugRayDuration);
+            Debug.DrawLine(hitPoint - forward, hitPoint + forward, Color.red, debugRayDuration);
+        }
+
         if (hitPoint.x >= gridMin.x && hitPoint.x < gridMax.x &&
             hitPoint.z >= gridMin.z && hitPoint.z < gridMax.z)
         {
@@ -218,10 +284,12 @@ public class CellInteractionController : MonoBehaviour
     private int3 WorldToCellPosition(Vector3 _worldPosition)
     {
         Vector3 localPosition = _worldPosition + gridOffset;
+
+        const float epsilon = 0.0001f;
         return new int3(
-            Mathf.FloorToInt(localPosition.x),
-            Mathf.FloorToInt(localPosition.y),
-            Mathf.FloorToInt(localPosition.z)
+            Mathf.FloorToInt(localPosition.x + epsilon),
+            Mathf.FloorToInt(localPosition.y + epsilon),
+            Mathf.FloorToInt(localPosition.z + epsilon)
         );
     }
 

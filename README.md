@@ -8,6 +8,7 @@ This project is a 3D implementation of Conway's Game of Life, realized in C# wit
 ## Summary
 
 - [Project pitch](#project-pitch)
+- [Game Rules](#game-rules)
 - [Project pictures](#project-pictures)
 - [Technical Section](#technical-section)
 - [How to play the demo](#how-to-play-the-demo)
@@ -24,7 +25,6 @@ Features included :
 - User interface to control simulation (pause, speed, reset)
 - Free camera to explore the grid
 - Real-time interaction (adding/deleting cells) via a highlight system
-- Optimizations to manage large grids
 - Statistics display (cycles, live/dead cells, FPS)
 
 The project focuses on performance, optimization and scalability.
@@ -52,6 +52,37 @@ The project focuses on performance, optimization and scalability.
     
     ![ConfigPanelTuto](./ReadmeContent/GameScreenshots/GameOfLife_UI_Screen_1.png)
 
+## Game Rules
+
+The project offers three variants of rules for the Game of Life in 3D, following the established naming convention used by the Conway's Game of Life community. The rule notation "Life XXXX (By/Sz-w)" uses the format where:
+- B (Birth): The number of neighbors needed for a dead cell to become alive
+- S (Survival): The range of neighbors needed for a live cell to stay alive
+
+You can select between these rule sets:
+
+1. **Life 5766 (B6/S5-7)** - Default rule, offering the most balanced experience
+   - A cell is born if it has exactly 6 living neighbors
+   - A cell survives if it has between 5 and 7 living neighbors
+
+2. **Life 4555 (B5/S4-5)** - Recommended alternative variant
+   - A cell is born if it has exactly 5 living neighbors
+   - A cell survives if it has 4 or 5 living neighbors
+
+3. **Life 4644 (B4/S4-6)** - Original rule of the project
+   - A cell is born if it has exactly 4 living neighbors
+   - A cell survives if it has between 4 and 6 living neighbors
+
+### Rule Selection
+
+- **In the Unity editor**: You can directly select which rule set to use via the GameManager component's "Selected Rule" dropdown.
+  
+- **In the built application**: The rule selection is set to "Auto" mode, which automatically selects the most appropriate rule based on your current grid size:
+  - Small grids (5-15): Uses Life 4644 for more active patterns in limited space
+  - Medium grids (16-30): Uses Life 4555 for balanced growth and stability
+  - Large grids (31-50): Uses Life 5766 for controlled growth and better performance
+
+Each set of rules produces different emergent behaviors and unique structures, so experimenting with different rules on various grid sizes can lead to fascinating discoveries.
+
 ## Project pictures
 
 ![GameOfLife3D_Screen_1](./ReadmeContent/GameScreenshots/GameOfLife_Screen_1.png)
@@ -61,8 +92,6 @@ The project focuses on performance, optimization and scalability.
 ![GameOfLife3D_Screen_3](./ReadmeContent/GameScreenshots/GameOfLife_Screen_3.png)
 
 ![GameOfLife3D_Screen_4](./ReadmeContent/GameScreenshots/GameOfLife_Screen_4.png)
-
-![GameOfLife3D_Screen_5](./ReadmeContent/GameScreenshots/GameOfLife_Screen_5.png)
 
 ![GameOfLife3D_Demo_2](./ReadmeContent/TechnicalDemoGifs/GameOfLife3D_Demo_2.gif)
 
@@ -178,21 +207,30 @@ The system includes several optimizations:
 - Pool usage monitoring and statistics tracking
 - Pre-warming system to avoid runtime stuttering
 
-#### Results
+#### Optimization Results
 
-| Grid Size   | Metric          | Before Pooling     | With Object Pooling |
-|------------|-----------------|-------------------|-------------------|
-| 10x10x10   | Average FPS     | 70-90             | Solid 140-150      |
-|            | FPS Drops       | Frequent drops to 40 | Consistently stable |
-|            | Memory Usage    | Unpredictable GC spikes | Optimized & controlled |
-| 20x20x20   | Average FPS     | 50-70             | Strong 110-140     |
-|            | FPS Drops       | Severe drops to 30  | Brief warmup period, then stable |
-|            | Memory Usage    | Heavy GC impact    | Efficient management |
+| Grid Size   | Metric          | Before Optimizations | After Complete Optimizations |
+|------------|-----------------|-------------------|---------------------------|
+| 10x10x10   | Average FPS     | 70-90             | Editor: 300+ (never below 144)<br>Build: ~900 FPS |
+|            | FPS Drops       | Frequent down to 40 | Completely eliminated      |
+|            | Memory Usage    | Unpredictable GC spikes | Constant and controlled  |
+| 20x20x20   | Average FPS     | 50-70             | Editor: 300+ (never below 144)<br>Build: ~900 FPS |
+|            | FPS Drops       | Severe down to 30  | Completely eliminated |
+|            | Memory Usage    | Heavy GC impact    | Efficient management without spikes |
+| 30x30x30   | Average FPS     | `No Data`             | Editor: 250-300<br>Build: 700-800 FPS |
+|            | FPS Drops       | `No Data`      | None - consistently smooth performance |
+|            | Memory Usage    | `No Data`           | Controlled even over extended periods |
 
+> **Note on Performance Testing:** During development and testing, the game reached extremely high frame rates (~900 FPS in build, 300+ FPS in editor). However, the final version has VSync enabled, capping the frame rate at 144 FPS for most displays, as rendering at higher framerates provides no visual benefit and unnecessarily consumes system resources.
 
+#### Test Configuration
 
-
-The object pooling system helped reduce FPS drops that occurred when creating/destroying many cells. We saw improvements from drops to 70 FPS to more stable performance, even with larger grids.
+Tests were conducted on the following system:
+- CPU: Intel Core i7-10750H @ 2.60Ghz (12 CPUs)
+- GPU: NVIDIA GeForce RTX 2060 6Go
+- RAM: 16Go DDR4
+- OS: Windows 11 64-bit
+- Unity Version: 6000.0.34f1
 
 ## How to download the game
 
